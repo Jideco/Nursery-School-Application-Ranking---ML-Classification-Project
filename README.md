@@ -1,7 +1,4 @@
-# Nursery-School-Application-Ranking---ML-Classification-Project
-
-
-# 👶 Nursery School Application Ranking - ML Classification Project
+# Nursery School Application Ranking - ML Classification Project
 
 ## Problem Description
 **Context:** In the 1980s, Ljubljana, Slovenia faced excessive enrollment for nursery schools, requiring an objective system to rank applications and provide transparent explanations for rejections. Traditional manual evaluation was time-consuming and lacked consistency.
@@ -26,7 +23,7 @@
 **Description:**
 - **Samples:** 12,960 nursery school applications
 - **Features:** 8 categorical attributes representing family characteristics
-- **Target:** Application class (3 categories: recommended, priority, not_recom)
+- **Target:** Application class (5 categories: not_recom, recommend, very_recom, priority, spec_prior)
 - **Origin:** Derived from a hierarchical decision model used in Ljubljana, Slovenia during 1980s nursery school enrollment crises
 
 **Features:**
@@ -49,87 +46,191 @@
 
 **Target Variable:**
 - `class` - Final application ranking
-  - *Categories:* recommended, priority, not_recom
+  - *Categories:* not_recom, recommend, very_recom, priority, spec_prior
 
 **Dataset included in repository:** `nursery.csv`
 
 ## Project Structure
+```
 nursery-application-ranking/
 │
 ├── data/
-│   └── nursery.csv                   # Dataset
-│
-├── notebook.ipynb                    # Complete EDA and modeling
-├── train.py                          # Training script
-├── predict.py                        # Flask API service
-├── test_api.py                       # API testing script
-│
-├── nursery_classifier.pkl            # Trained classification model
-├── feature_encoder.pkl               # Feature encoder for categorical variables
-│
-├── requirements.txt                  # Python dependencies
-├── Dockerfile                        # Docker configuration
-├── README.md                         # This file
-│
-└── app.py                           # (BONUS) Streamlit web app
+│   └── nursery.csv                # dataset
+├── notebook.ipynb                 # EDA, feature work, experiments
+├── train.py                       # training script
+├── predict.py                      # FastAPI app (prediction endpoint)
+├── decision_department.py         # example client / tests
+├── model.bin                      # trained XGBoost model
+├── pyproject.toml                 # dependencies
+├── Dockerfile                     # container image
+├── README.md                      # this file
+└── fly.toml                       # fly.io deploy config
+```
 
-## Key Findings from EDA
-*(You'll fill this in after your analysis, but here are expected sections)*
+---
 
+## Key findings from EDA
 **Data Overview**
-- No missing values ✓
-- Class distribution: [You'll analyze this]
-- Feature correlations and patterns
+- No missing values ✓ 
 
 **Most Important Features**
-*(Based on domain knowledge and your analysis)*
-- `has_nurs` - Child's current nursery situation likely critical
-- `finance` - Financial standing impacts priority
-- `health` - Health conditions may be a key factor
-- `social` - Social conditions affect family stability
-
-**Class Distribution**
-- Significant class imbalance expected (most applications likely "not_recom")
-- Requires careful handling with techniques like class weighting or resampling
+*(Based on feature importance and mutual information analysis)*
+- `health` - Health conditions may be a key factor (0.6638)
+- `has_nurs` - Child's current nursery situation likely critical (0.1363)
+- `social` - Social conditions affect family stability (0.0149)
+- `finance` - Financial standing impacts priority (0.0026)
 
 ## Model Performance
-*(You'll fill this with your results)*
-
-**Best Model:** [Your chosen model after comparison]
+**Algorithm:** XGBoost classifier (best performer)
 
 **Performance Metrics:**
-- **Accuracy:** [Value]%
-- **Precision (weighted):** [Value]
-- **Recall (weighted):** [Value] 
-- **F1-Score (weighted):** [Value]
-- **Confusion Matrix:** [Visual description]
+- **Accuracy:** [0.9984567901234568]
+- **Confusion Matrix:** [<img width="683" height="547" alt="image" src="https://github.com/user-attachments/assets/aeb50f2f-70d4-42e4-94e0-581f18eec792" />
+]
 
 **Model Comparison:**
-- Decision Tree: [Results]
-- Random Forest: [Results] 
-- Gradient Boosting: [Results]
-- [Other models you test]
+- Random Forest: [0.9807]
+  <img width="683" height="547" alt="image" src="https://github.com/user-attachments/assets/650d0b7b-d26f-4381-af4e-4f37c7ad788f" />
 
-## Installation & Setup
-**Prerequisites**
-- Python 3.11+
-- Docker (for containerized deployment)
+- Gradient Boosting: [0.9984]
+  <img width="683" height="547" alt="image" src="https://github.com/user-attachments/assets/e412a408-33ef-4801-b076-9aa7f76af29c" />
 
-**Option 1: Local Installation**
+
+---
+
+## Quickstart, local
+
+### requirements
+
+* Python 3.12 recommended
+
+### run locally
+
+1. create env, install deps
+
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/nursery-application-ranking.git
-cd nursery-application-ranking
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate      # on Windows: venv\Scripts\activate
+```
 
-# Install dependencies
-pip install -r requirements.txt
+2. start API
 
-# Train the model (optional - model already included)
-python train.py
+```bash
+uvicorn predict:app --reload --port 9696
+```
 
-# Start the Flask API
-python predict.py
+3. open docs: `http://localhost:9696/docs`
+
+---
+
+## Docker
+
+1. build
+
+```bash
+docker build -t predict-decision .
+```
+
+2. run
+
+```bash
+docker run -it -p 9696:9696 predict-decision
+```
+
+3. verify
+
+```bash
+curl http://localhost:9696/health
+```
+
+---
+
+## Deployed
+
+Example (fly.io): `https://silent-thunder-9151.fly.dev/docs/`
+
+---
+
+## API
+
+### Predict
+
+`POST /predict`
+Content-Type: `application/json`
+Request example
+
+```json
+{
+  "parents": "usual",
+  "has_nurs": "proper",
+  "form": "complete",
+  "children": "2",
+  "housing": "convenient",
+  "finance": "convenient",
+  "social": "non-prob",
+  "health": "recommended"
+}
+```
+<img width="911" height="721" alt="image" src="https://github.com/user-attachments/assets/e6b03f4b-f03b-40ec-ba4f-8e04442e77cd" />
+---
+
+## Reproducibility
+
+* use a fixed seed for splits and training, for example `random_state=42`
+* always `stratify=y` on train/test split when using the `class` label
+* training command (example)
+
+```bash
+python train.py --data data/nursery.csv --seed 42
+```
+
+Training will:
+
+* encode categories consistently
+* train the XGBoost classifier with tuned params
+* save `model.bin` and encoder metadata
+
+---
+
+## Limitations & next steps
+
+**Current limits**
+
+* dataset mirrors 1980s local rules, may not generalize across regions or eras.
+* heavy reliance on `health` could bake policy choices into the model.
+
+---
+
+## Troubleshooting
+
+* `ModuleNotFoundError`: activate env, install deps.
+* Port conflicts: free the port or use a different host port with Docker.
+* Missing model in container: ensure `model.bin` is copied in `Dockerfile`, rebuild image.
+
+
+---
+
+## Tech stack
+
+* Python 3.12
+* XGBoost, scikit-learn
+* pandas, numpy
+* FastAPI, uvicorn
+* matplotlib, seaborn
+* Docker, Fly.io
+
+---
+
+## Author
+
+Mujeeb Olajide Opabode
+GitHub: `@jideco`
+Email: `jideopabode@gmail.com`
+
+---
+
+## License
+
+Educational and research use. Use responsibly.
+
+---
